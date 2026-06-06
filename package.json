@@ -1,0 +1,14 @@
+{
+  "name": "turbo_fx",
+  "version": "0.1.0",
+  "description": "Visual glitch effects for Hotwire/Turbo content updates",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@hotwired/stimulus": "^3.2.2",
+    "happy-dom": "^15.0.0",
+    "vitest": "^2.0.0"
+  }
+}
