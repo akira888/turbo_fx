@@ -2,7 +2,7 @@
 
 module TurboFx
   module Helper
-    module_function
+    extend self
 
     def turbo_fx(effect, **options)
       if effect.to_s == "off"
