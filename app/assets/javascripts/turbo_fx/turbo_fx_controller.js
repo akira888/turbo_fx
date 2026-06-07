@@ -62,8 +62,12 @@ export default class extends Controller {
     target.classList.add(className);
   }
 
-  // この要素にエフェクトを効かせるべきか（off 判定は Task 12 で実装）。
+  // 対象自身から祖先方向に最も近い data-turbo-fx を探し、off なら適用しない。
   shouldApply(target) {
+    const scoped = target.closest("[data-turbo-fx]");
+    if (scoped && scoped.getAttribute("data-turbo-fx") === "off") {
+      return false;
+    }
     return true;
   }
 }
