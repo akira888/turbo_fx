@@ -26,7 +26,34 @@ export default class extends Controller {
   }
 
   handleBeforeStreamRender(event) {
-    // Task 11 で実装
+    const stream = event.target;
+    const action = stream.getAttribute("action");
+    const targetId = stream.getAttribute("target");
+    if (!targetId) return;
+
+    // 描画は before イベントの後。描画後の DOM に対して適用する。
+    requestAnimationFrame(() => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      // 出現系では template の中身が target の子として挿入される。
+      const inserted = Array.from(target.children);
+      this.applyStreamEffect(action, target, inserted);
+    });
+  }
+
+  // action に応じて適切な要素へ適切なクラスを付与する純粋ロジック。
+  applyStreamEffect(action, target, insertedEls) {
+    if (action === "replace" || action === "update") {
+      if (!this.shouldApply(target)) return;
+      this.applyEffect(target, "turbo-fx--glitching");
+    } else if (action === "append" || action === "prepend") {
+      insertedEls.forEach((el) => {
+        if (!this.shouldApply(el)) return;
+        this.applyEffect(el, "turbo-fx--appearing");
+      });
+    }
+    // remove など、それ以外の action は何もしない。
   }
 
   // 対象要素にエフェクトを適用する共通処理。
