@@ -6,6 +6,13 @@ export default class extends Controller {
     duration: { type: Number, default: 500 }
   };
 
+  // applyEffect の animationend リスナーを target ごとに管理する WeakMap。
+  // 前回のリスナーを破棄してから新規登録することで積み上がりを防ぐ（Bug 1）。
+  get aborters() {
+    if (!this._aborters) this._aborters = new WeakMap();
+    return this._aborters;
+  }
+
   connect() {
     this.onFrameRender = this.handleFrameRender.bind(this);
     this.onBeforeStreamRender = this.handleBeforeStreamRender.bind(this);
@@ -31,13 +38,17 @@ export default class extends Controller {
     const targetId = stream.getAttribute("target");
     if (!targetId) return;
 
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    // 描画前に存在していた子要素を記録しておく（出現系で「新規挿入分」だけを対象にするため）。
+    const before = new Set(Array.from(target.children));
+
     // 描画は before イベントの後。描画後の DOM に対して適用する。
     requestAnimationFrame(() => {
-      const target = document.getElementById(targetId);
-      if (!target) return;
-
       // 出現系では template の中身が target の子として挿入される。
-      const inserted = Array.from(target.children);
+      // スナップショットに含まれない子だけが新規挿入された要素。
+      const inserted = Array.from(target.children).filter((el) => !before.has(el));
       this.applyStreamEffect(action, target, inserted);
     });
   }
@@ -62,6 +73,13 @@ export default class extends Controller {
   applyEffect(target, className) {
     target.style.setProperty("--turbo-fx-duration", `${this.durationValue}ms`);
 
+    // 前回の applyEffect で登録した animationend リスナーを破棄し、積み上がりを防ぐ（Bug 1）。
+    const prevAbort = this.aborters.get(target);
+    if (prevAbort) prevAbort.abort();
+
+    const abortController = new AbortController();
+    this.aborters.set(target, abortController);
+
     if (target.classList.contains(className)) {
       target.classList.remove(className);
       // 強制 reflow: 読み取ることでブラウザにスタイル再計算をさせ、アニメをリセットする。
@@ -70,10 +88,13 @@ export default class extends Controller {
 
     target.addEventListener(
       "animationend",
-      () => {
+      (event) => {
+        // 子孫からバブルした animationend は無視し、自身のアニメ終了でのみ後始末する（Bug 2）。
+        if (event.target !== target) return;
         target.classList.remove(className);
+        abortController.abort();
       },
-      { once: true }
+      { signal: abortController.signal }
     );
 
     target.classList.add(className);

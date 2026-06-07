@@ -140,6 +140,27 @@ describe("TurboFxController", () => {
       frame.dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
       expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
     });
+
+    it("ignores animationend bubbling from a child element", async () => {
+      const app = startStimulus(`
+        <div data-controller="turbo-fx" id="root">
+          <turbo-frame id="a"><span id="child"></span></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+
+      // 子要素から animationend がバブルしてもクラスは残る
+      document.getElementById("child").dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
+      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+
+      // 自身の animationend で除去される
+      frame.dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
+      expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
+    });
   });
 
   describe("stream action dispatch", () => {
@@ -150,6 +171,37 @@ describe("TurboFxController", () => {
       const root = document.getElementById("root");
       return { app, root };
     }
+
+    it("only marks newly-inserted children as appearing, not existing ones", async () => {
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" id="root">
+          <ul id="list"><li id="existing">A</li></ul>
+        </div>
+      `);
+      await nextTick();
+      const controller = app.getControllerForElementAndIdentifier(root, "turbo-fx");
+      const list = document.getElementById("list");
+
+      const fresh = document.createElement("li");
+      fresh.id = "fresh";
+
+      const stream = document.createElement("turbo-stream");
+      stream.setAttribute("action", "append");
+      stream.setAttribute("target", "list");
+
+      // handleBeforeStreamRender は同期でスナップショットを取り、rAF 内で適用する。
+      // ハンドラを呼んだ後に fresh を挿入することで「描画後」を模している。
+      controller.handleBeforeStreamRender({ target: stream });
+      list.appendChild(fresh);
+
+      // rAF が発火するのを待つ
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      // happy-dom で rAF が即時実行されない場合に備えてもう一tick待つ
+      await nextTick();
+
+      expect(document.getElementById("existing").classList.contains("turbo-fx--appearing")).toBe(false);
+      expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
+    });
 
     it("applies glitching class for replace action", async () => {
       const { app, root } = controllerFor(`
