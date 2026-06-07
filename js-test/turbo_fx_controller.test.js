@@ -203,6 +203,76 @@ describe("TurboFxController", () => {
       expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
     });
 
+    it("applies appearing even when the new child is inserted a few frames late", async () => {
+      // 実ブラウザでは Turbo が before-stream-render の数フレーム後に DOM を挿入する。
+      // rAF 1 回だけで差分を取ると挿入前で空になり、appearing が付かない回帰バグになる。
+      // 挿入を遅延させても MutationObserver で検知して付与できることを保証する。
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" id="root">
+          <ul id="list"><li id="existing">A</li></ul>
+        </div>
+      `);
+      await nextTick();
+      const controller = app.getControllerForElementAndIdentifier(root, "turbo-fx");
+      const list = document.getElementById("list");
+
+      const stream = document.createElement("turbo-stream");
+      stream.setAttribute("action", "append");
+      stream.setAttribute("target", "list");
+
+      controller.handleBeforeStreamRender({ target: stream });
+
+      // 2 フレーム後に挿入（Turbo の実挙動を模す）
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      const fresh = document.createElement("li");
+      fresh.id = "fresh";
+      list.appendChild(fresh);
+
+      // MutationObserver のコールバックが回るのを待つ
+      await nextTick();
+      await nextTick();
+
+      expect(document.getElementById("existing").classList.contains("turbo-fx--appearing")).toBe(false);
+      expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
+    });
+
+    it("handles before-stream-render dispatched on document (turbo-stream renders at <html> root)", async () => {
+      // 実ブラウザでは <turbo-stream> は <html> 直下に置かれ、before-stream-render は
+      // document で発火する。コントローラのラッパ要素にはバブリングして来ないため、
+      // document を監視していないと append が一切効かない（実機での回帰バグ）。
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" id="root">
+          <ul id="list"><li id="existing">A</li></ul>
+        </div>
+      `);
+      await nextTick();
+
+      // turbo-stream を <html> 直下（コントローラ配下の外）に置く実挙動を模す
+      const stream = document.createElement("turbo-stream");
+      stream.setAttribute("action", "append");
+      stream.setAttribute("target", "list");
+      document.documentElement.appendChild(stream);
+
+      // stream 要素から bubbles:true で発火 → document まで伝播し、document 監視のハンドラが拾う。
+      // （ラッパ要素は経路上に無いので、ラッパ監視のままでは拾えない）
+      stream.dispatchEvent(new CustomEvent("turbo:before-stream-render", { bubbles: true }));
+
+      // 挿入を遅延させる（Turbo の実挙動）
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      const fresh = document.createElement("li");
+      fresh.id = "fresh";
+      document.getElementById("list").appendChild(fresh);
+
+      await nextTick();
+      await nextTick();
+
+      expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
+
+      stream.remove();
+    });
+
     it("applies glitching class for replace action", async () => {
       const { app, root } = controllerFor(`
         <div data-controller="turbo-fx" id="root">

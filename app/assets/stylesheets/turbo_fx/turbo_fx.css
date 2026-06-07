@@ -1,0 +1,97 @@
+/* turbo_fx — digital glitch effects for Turbo content updates */
+
+:root {
+  --turbo-fx-duration: 500ms;
+}
+
+/*
+ * RGB ずれ + スライス断裂 + 横揺れ。
+ * 大きな要素でもバグっぽさが出るよう揺れ幅と色ずれを大きめに取る:
+ * - transform: translate を大きめ（±12〜16px）に振り、断裂感を強調
+ * - 色ずれも ±8px のベタ色（#ff0040 / #00e5ff）で鮮明に
+ * - キーフレームの役割を分担する:「RGB ずれを見せる瞬間」(clip-path なし) と
+ *   「スライス断裂の瞬間」(clip-path あり) を交互に置く。
+ *   両方を同じフレームに混ぜると RGB ずれの見せ場が断裂で潰れるため。
+ * - 断裂は 3 回に増やしつつ、60% で一旦正常化して残りはクリーン（歪んで→スッと戻る）
+ */
+@keyframes turbo-fx-glitch {
+  0% {
+    transform: translate(0);
+    filter: none;
+    clip-path: none;
+  }
+  /* RGB を鮮明に見せる瞬間（断裂なし） */
+  8% {
+    transform: translate(-16px, 6px);
+    filter: drop-shadow(8px 0 #ff0040) drop-shadow(-8px 0 #00e5ff);
+    clip-path: none;
+  }
+  /* 断裂 1 */
+  18% {
+    transform: translate(14px, -5px);
+    clip-path: inset(14% 0 56% 0);
+  }
+  /* RGB を逆方向に見せる瞬間（断裂なし） */
+  30% {
+    transform: translate(-12px, 3px);
+    filter: drop-shadow(-8px 0 #ff0040) drop-shadow(8px 0 #00e5ff);
+    clip-path: none;
+  }
+  /* 断裂 2 */
+  42% {
+    transform: translate(10px, -2px);
+    clip-path: inset(58% 0 16% 0);
+  }
+  /* 断裂 3 */
+  54% {
+    transform: translate(-7px, 1px);
+    clip-path: inset(34% 0 44% 0);
+  }
+  60% {
+    transform: translate(0);
+    filter: none;
+    clip-path: none;
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* 出現系の立ち上がり。グリッチと重ねがけする。 */
+@keyframes turbo-fx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * 置き換え系。
+ * display を block に保証する: <turbo-frame> は既定で display:inline であり、
+ * inline 要素に filter/clip-path を当てると中身がペイントされず消えてしまう。
+ * （利用者が flex/grid 等を意図する場合は、より高い詳細度で上書き可能なよう !important は付けない。）
+ */
+.turbo-fx--glitching {
+  display: block;
+  animation: turbo-fx-glitch var(--turbo-fx-duration) steps(5, end);
+}
+
+/*
+ * 出現系: フェード + グリッチを重ねがけ。
+ * フェードは opacity を 1 に保持したいので forwards、グリッチは終了状態が正常なので保持不要。
+ */
+.turbo-fx--appearing {
+  display: block;
+  animation:
+    turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards,
+    turbo-fx-glitch var(--turbo-fx-duration) steps(5, end);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turbo-fx--glitching,
+  .turbo-fx--appearing {
+    animation: none;
+  }
+}

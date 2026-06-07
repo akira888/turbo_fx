@@ -6,8 +6,6 @@ export default class extends Controller {
     duration: { type: Number, default: 500 }
   };
 
-  // applyEffect の animationend リスナーを target ごとに管理する WeakMap。
-  // 前回のリスナーを破棄してから新規登録することで積み上がりを防ぐ（Bug 1）。
   get aborters() {
     if (!this._aborters) this._aborters = new WeakMap();
     return this._aborters;
@@ -17,13 +15,18 @@ export default class extends Controller {
     this.onFrameRender = this.handleFrameRender.bind(this);
     this.onBeforeStreamRender = this.handleBeforeStreamRender.bind(this);
 
+    // Turbo Frame の render イベントは frame 要素自身（コントローラ配下）で発火し、
+    // バブリングで this.element に届くため、ラッパで監視できる。
     this.element.addEventListener("turbo:frame-render", this.onFrameRender);
-    this.element.addEventListener("turbo:before-stream-render", this.onBeforeStreamRender);
+
+    // 一方 <turbo-stream> は処理中に <html> 直下へ挿入され、before-stream-render は
+    // そこで発火する。コントローラのラッパにはバブリングして来ないため、document で監視する。
+    document.addEventListener("turbo:before-stream-render", this.onBeforeStreamRender);
   }
 
   disconnect() {
     this.element.removeEventListener("turbo:frame-render", this.onFrameRender);
-    this.element.removeEventListener("turbo:before-stream-render", this.onBeforeStreamRender);
+    document.removeEventListener("turbo:before-stream-render", this.onBeforeStreamRender);
   }
 
   handleFrameRender(event) {
@@ -41,19 +44,41 @@ export default class extends Controller {
     const target = document.getElementById(targetId);
     if (!target) return;
 
-    // 描画前に存在していた子要素を記録しておく（出現系で「新規挿入分」だけを対象にするため）。
-    const before = new Set(Array.from(target.children));
+    // document 監視のため、ページ上の全 turbo-fx コントローラがこのイベントを受け取る
+    // 自分の配下（this.element 内）の target だけを担当する
+    if (!this.element.contains(target)) return;
 
-    // 描画は before イベントの後。描画後の DOM に対して適用する。
-    requestAnimationFrame(() => {
-      // 出現系では template の中身が target の子として挿入される。
-      // スナップショットに含まれない子だけが新規挿入された要素。
-      const inserted = Array.from(target.children).filter((el) => !before.has(el));
-      this.applyStreamEffect(action, target, inserted);
-    });
+    if (action === "replace" || action === "update") {
+      this.applyStreamEffect(action, target, []);
+      return;
+    }
+
+    // 出現系（append / prepend）は、Turbo が DOM を挿入するのが
+    // before-stream-render の数フレーム後になることがある（rAF 1 回では間に合わない）。
+    // そこで MutationObserver で実際の子要素挿入を待ち、新規挿入分だけにエフェクトを当てる。
+    if (action === "append" || action === "prepend") {
+      this.observeInsertion(target, action);
+    }
+    // remove など、それ以外の action は何もしない。
   }
 
-  // action に応じて適切な要素へ適切なクラスを付与する純粋ロジック。
+  // target への子要素挿入を MutationObserver で監視し、挿入された新要素に出現系エフェクトを当てる
+  observeInsertion(target, action) {
+    const before = new Set(Array.from(target.children));
+
+    const observer = new MutationObserver(() => {
+      const inserted = Array.from(target.children).filter((el) => !before.has(el));
+      if (inserted.length === 0) return;
+      observer.disconnect();
+      this.applyStreamEffect(action, target, inserted);
+    });
+
+    observer.observe(target, { childList: true });
+
+    // 取りこぼし防止の保険: 一定時間で監視を打ち切る（挿入が来なければ何もしない）
+    setTimeout(() => observer.disconnect(), 1000);
+  }
+
   applyStreamEffect(action, target, insertedEls) {
     if (action === "replace" || action === "update") {
       if (!this.shouldApply(target)) return;
@@ -64,16 +89,16 @@ export default class extends Controller {
         this.applyEffect(el, "turbo-fx--appearing");
       });
     }
-    // remove など、それ以外の action は何もしない。
+    // remove など、それ以外の action は何もしない
   }
 
-  // 対象要素にエフェクトを適用する共通処理。
-  // すでに同クラスが付いている場合は一旦外して reflow し、アニメを頭から再生する。
-  // animationend でクラスを除去して後始末する。
+  // 対象要素にエフェクトを適用する共通処理
+  // すでに同クラスが付いている場合は一旦外して reflow し、アニメを頭から再生する
+  // animationend でクラスを除去して後始末する
   applyEffect(target, className) {
     target.style.setProperty("--turbo-fx-duration", `${this.durationValue}ms`);
 
-    // 前回の applyEffect で登録した animationend リスナーを破棄し、積み上がりを防ぐ（Bug 1）。
+    // 前回の applyEffect で登録した animationend リスナーを破棄し、積み上がりを防ぐ
     const prevAbort = this.aborters.get(target);
     if (prevAbort) prevAbort.abort();
 
@@ -82,14 +107,14 @@ export default class extends Controller {
 
     if (target.classList.contains(className)) {
       target.classList.remove(className);
-      // 強制 reflow: 読み取ることでブラウザにスタイル再計算をさせ、アニメをリセットする。
+      // 強制 reflow: 読み取ることでブラウザにスタイル再計算をさせ、アニメをリセットする
       void target.offsetWidth;
     }
 
     target.addEventListener(
       "animationend",
       (event) => {
-        // 子孫からバブルした animationend は無視し、自身のアニメ終了でのみ後始末する（Bug 2）。
+        // 子孫からバブルした animationend は無視し、自身のアニメ終了でのみ後始末する
         if (event.target !== target) return;
         target.classList.remove(className);
         abortController.abort();
@@ -100,7 +125,7 @@ export default class extends Controller {
     target.classList.add(className);
   }
 
-  // 対象自身から祖先方向に最も近い data-turbo-fx を探し、off なら適用しない。
+  // 対象自身から祖先方向に最も近い data-turbo-fx を探し、off なら適用しない
   shouldApply(target) {
     const scoped = target.closest("[data-turbo-fx]");
     if (scoped && scoped.getAttribute("data-turbo-fx") === "off") {
