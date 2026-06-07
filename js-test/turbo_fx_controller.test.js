@@ -107,6 +107,23 @@ describe("TurboFxController", () => {
     });
   });
 
+  describe("re-triggering on rapid updates", () => {
+    it("keeps the class applied after a repeated frame-render", async () => {
+      const app = startStimulus(`
+        <div data-controller="turbo-fx" id="root">
+          <turbo-frame id="a"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+
+      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+    });
+  });
+
   describe("stream action dispatch", () => {
     function controllerFor(html) {
       document.body.innerHTML = html;

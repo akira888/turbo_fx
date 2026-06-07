@@ -57,8 +57,16 @@ export default class extends Controller {
   }
 
   // 対象要素にエフェクトを適用する共通処理。
+  // すでに同クラスが付いている場合は一旦外して reflow し、アニメを頭から再生する。
   applyEffect(target, className) {
     target.style.setProperty("--turbo-fx-duration", `${this.durationValue}ms`);
+
+    if (target.classList.contains(className)) {
+      target.classList.remove(className);
+      // 強制 reflow: 読み取ることでブラウザにスタイル再計算をさせ、アニメをリセットする。
+      void target.offsetWidth;
+    }
+
     target.classList.add(className);
   }
 
