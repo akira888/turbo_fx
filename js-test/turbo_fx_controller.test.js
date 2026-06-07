@@ -124,6 +124,24 @@ describe("TurboFxController", () => {
     });
   });
 
+  describe("cleanup", () => {
+    it("removes the glitching class on animationend", async () => {
+      const app = startStimulus(`
+        <div data-controller="turbo-fx" id="root">
+          <turbo-frame id="a"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+
+      frame.dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
+      expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
+    });
+  });
+
   describe("stream action dispatch", () => {
     function controllerFor(html) {
       document.body.innerHTML = html;
