@@ -17,6 +17,44 @@ RSpec.describe TurboFx::Helper do
     end
   end
 
+  describe "turbo_fx(:blur)" do
+    let(:args) { [:blur] }
+
+    it "returns blur as the effect data attribute" do
+      expect(result).to eq(
+        data: { controller: "turbo-fx", turbo_fx: "blur" }
+      )
+    end
+  end
+
+  describe "turbo_fx(:rgb_shift)" do
+    let(:args) { [:rgb_shift] }
+
+    it "dasherizes the effect name for the DOM layer" do
+      expect(result).to eq(
+        data: { controller: "turbo-fx", turbo_fx: "rgb-shift" }
+      )
+    end
+  end
+
+  describe "turbo_fx(:flash)" do
+    let(:args) { [:flash] }
+
+    it "returns flash as the effect data attribute" do
+      expect(result).to eq(
+        data: { controller: "turbo-fx", turbo_fx: "flash" }
+      )
+    end
+  end
+
+  describe "turbo_fx(:sparkle) — unknown effect" do
+    let(:args) { [:sparkle] }
+
+    it "raises ArgumentError naming the bad effect and the available ones" do
+      expect { result }.to raise_error(ArgumentError, /sparkle.*glitch, blur, rgb_shift, flash/m)
+    end
+  end
+
   describe "turbo_fx(:off)" do
     let(:args) { [:off] }
 

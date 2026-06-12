@@ -4,14 +4,21 @@ module TurboFx
   module Helper
     extend self
 
+    EFFECTS = %w[glitch blur rgb_shift flash].freeze
+
     def turbo_fx(effect, **options)
-      if effect.to_s == "off"
-        return { data: { turbo_fx: "off" } }
+      effect = effect.to_s
+      return { data: { turbo_fx: "off" } } if effect == "off"
+
+      unless EFFECTS.include?(effect)
+        raise ArgumentError,
+          "unknown turbo_fx effect: #{effect.inspect} (available: #{EFFECTS.join(', ')}, off)"
       end
 
       data = {
         controller: "turbo-fx",
-        turbo_fx: effect.to_s
+        # DOM / CSS 層はダッシュ区切りで統一する（:rgb_shift → "rgb-shift"）
+        turbo_fx: effect.tr("_", "-")
       }
 
       options.each do |key, value|
