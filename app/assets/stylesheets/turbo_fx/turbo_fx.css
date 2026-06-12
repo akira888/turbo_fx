@@ -73,7 +73,7 @@
  * inline 要素に filter/clip-path を当てると中身がペイントされず消えてしまう。
  * （利用者が flex/grid 等を意図する場合は、より高い詳細度で上書き可能なよう !important は付けない。）
  */
-.turbo-fx--glitching {
+.turbo-fx--glitch {
   display: block;
   animation: turbo-fx-glitch var(--turbo-fx-duration) steps(5, end);
 }
@@ -82,7 +82,7 @@
  * 出現系: フェード + グリッチを重ねがけ。
  * フェードは opacity を 1 に保持したいので forwards、グリッチは終了状態が正常なので保持不要。
  */
-.turbo-fx--appearing {
+.turbo-fx--glitch-appearing {
   display: block;
   animation:
     turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards,
@@ -90,8 +90,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .turbo-fx--glitching,
-  .turbo-fx--appearing {
+  .turbo-fx--glitch,
+  .turbo-fx--glitch-appearing {
     animation: none;
   }
 }

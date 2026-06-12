@@ -32,7 +32,7 @@ export default class extends Controller {
   handleFrameRender(event) {
     const target = event.target;
     if (!this.shouldApply(target)) return;
-    this.applyEffect(target, "turbo-fx--glitching");
+    this.applyEffect(target, "turbo-fx--glitch");
   }
 
   handleBeforeStreamRender(event) {
@@ -82,11 +82,11 @@ export default class extends Controller {
   applyStreamEffect(action, target, insertedEls) {
     if (action === "replace" || action === "update") {
       if (!this.shouldApply(target)) return;
-      this.applyEffect(target, "turbo-fx--glitching");
+      this.applyEffect(target, "turbo-fx--glitch");
     } else if (action === "append" || action === "prepend") {
       insertedEls.forEach((el) => {
         if (!this.shouldApply(el)) return;
-        this.applyEffect(el, "turbo-fx--appearing");
+        this.applyEffect(el, "turbo-fx--glitch-appearing");
       });
     }
     // remove など、それ以外の action は何もしない

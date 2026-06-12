@@ -25,7 +25,7 @@ describe("TurboFxController", () => {
     expect(controller).not.toBeNull();
   });
 
-  it("adds the glitching class to the frame on turbo:frame-render", async () => {
+  it("adds the glitch class to the frame on turbo:frame-render", async () => {
     const app = startStimulus(`
       <div data-controller="turbo-fx" id="root">
         <turbo-frame id="a"></turbo-frame>
@@ -36,7 +36,7 @@ describe("TurboFxController", () => {
     const frame = document.getElementById("a");
     frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
 
-    expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+    expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
   });
 
   it("sets the --turbo-fx-duration CSS variable from the duration value", async () => {
@@ -73,7 +73,7 @@ describe("TurboFxController", () => {
       const frame = document.getElementById("a");
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
 
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
     });
 
     it("does not apply when an ancestor is data-turbo-fx='off'", async () => {
@@ -89,7 +89,7 @@ describe("TurboFxController", () => {
       const frame = document.getElementById("a");
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
 
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
     });
 
     it("applies when the nearest data-turbo-fx is not off", async () => {
@@ -103,7 +103,7 @@ describe("TurboFxController", () => {
       const frame = document.getElementById("a");
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
 
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
     });
   });
 
@@ -120,12 +120,12 @@ describe("TurboFxController", () => {
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
 
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
     });
   });
 
   describe("cleanup", () => {
-    it("removes the glitching class on animationend", async () => {
+    it("removes the glitch class on animationend", async () => {
       const app = startStimulus(`
         <div data-controller="turbo-fx" id="root">
           <turbo-frame id="a"></turbo-frame>
@@ -135,10 +135,10 @@ describe("TurboFxController", () => {
 
       const frame = document.getElementById("a");
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
 
       frame.dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
     });
 
     it("ignores animationend bubbling from a child element", async () => {
@@ -151,15 +151,15 @@ describe("TurboFxController", () => {
 
       const frame = document.getElementById("a");
       frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
 
       // 子要素から animationend がバブルしてもクラスは残る
       document.getElementById("child").dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
 
       // 自身の animationend で除去される
       frame.dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
-      expect(frame.classList.contains("turbo-fx--glitching")).toBe(false);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
     });
   });
 
@@ -199,8 +199,8 @@ describe("TurboFxController", () => {
       // happy-dom で rAF が即時実行されない場合に備えてもう一tick待つ
       await nextTick();
 
-      expect(document.getElementById("existing").classList.contains("turbo-fx--appearing")).toBe(false);
-      expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
+      expect(document.getElementById("existing").classList.contains("turbo-fx--glitch-appearing")).toBe(false);
+      expect(document.getElementById("fresh").classList.contains("turbo-fx--glitch-appearing")).toBe(true);
     });
 
     it("applies appearing even when the new child is inserted a few frames late", async () => {
@@ -233,8 +233,8 @@ describe("TurboFxController", () => {
       await nextTick();
       await nextTick();
 
-      expect(document.getElementById("existing").classList.contains("turbo-fx--appearing")).toBe(false);
-      expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
+      expect(document.getElementById("existing").classList.contains("turbo-fx--glitch-appearing")).toBe(false);
+      expect(document.getElementById("fresh").classList.contains("turbo-fx--glitch-appearing")).toBe(true);
     });
 
     it("handles before-stream-render dispatched on document (turbo-stream renders at <html> root)", async () => {
@@ -268,12 +268,12 @@ describe("TurboFxController", () => {
       await nextTick();
       await nextTick();
 
-      expect(document.getElementById("fresh").classList.contains("turbo-fx--appearing")).toBe(true);
+      expect(document.getElementById("fresh").classList.contains("turbo-fx--glitch-appearing")).toBe(true);
 
       stream.remove();
     });
 
-    it("applies glitching class for replace action", async () => {
+    it("applies glitch class for replace action", async () => {
       const { app, root } = controllerFor(`
         <div data-controller="turbo-fx" id="root">
           <div id="target"></div>
@@ -285,8 +285,8 @@ describe("TurboFxController", () => {
 
       controller.applyStreamEffect("replace", target, []);
 
-      expect(target.classList.contains("turbo-fx--glitching")).toBe(true);
-      expect(target.classList.contains("turbo-fx--appearing")).toBe(false);
+      expect(target.classList.contains("turbo-fx--glitch")).toBe(true);
+      expect(target.classList.contains("turbo-fx--glitch-appearing")).toBe(false);
     });
 
     it("applies appearing class to inserted elements for append action", async () => {
@@ -303,8 +303,8 @@ describe("TurboFxController", () => {
 
       controller.applyStreamEffect("append", target, [inserted]);
 
-      expect(inserted.classList.contains("turbo-fx--appearing")).toBe(true);
-      expect(target.classList.contains("turbo-fx--glitching")).toBe(false);
+      expect(inserted.classList.contains("turbo-fx--glitch-appearing")).toBe(true);
+      expect(target.classList.contains("turbo-fx--glitch")).toBe(false);
     });
 
     it("does nothing for remove action", async () => {
@@ -319,8 +319,8 @@ describe("TurboFxController", () => {
 
       controller.applyStreamEffect("remove", target, []);
 
-      expect(target.classList.contains("turbo-fx--glitching")).toBe(false);
-      expect(target.classList.contains("turbo-fx--appearing")).toBe(false);
+      expect(target.classList.contains("turbo-fx--glitch")).toBe(false);
+      expect(target.classList.contains("turbo-fx--glitch-appearing")).toBe(false);
     });
   });
 });
