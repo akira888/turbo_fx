@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Application } from "@hotwired/stimulus";
 import TurboFxController from "../app/assets/javascripts/turbo_fx/turbo_fx_controller.js";
 
@@ -321,6 +321,94 @@ describe("TurboFxController", () => {
 
       expect(target.classList.contains("turbo-fx--glitch")).toBe(false);
       expect(target.classList.contains("turbo-fx--glitch-appearing")).toBe(false);
+    });
+  });
+
+  describe("effect resolution", () => {
+    function controllerFor(html) {
+      document.body.innerHTML = html;
+      const app = Application.start();
+      app.register("turbo-fx", TurboFxController);
+      const root = document.getElementById("root");
+      return { app, root };
+    }
+
+    it("applies turbo-fx--blur on frame render under data-turbo-fx='blur'", async () => {
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" data-turbo-fx="blur" id="root">
+          <turbo-frame id="a"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+
+      expect(frame.classList.contains("turbo-fx--blur")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
+    });
+
+    it("applies turbo-fx--rgb-shift-appearing for append under data-turbo-fx='rgb-shift'", async () => {
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" data-turbo-fx="rgb-shift" id="root">
+          <div id="target"></div>
+        </div>
+      `);
+      await nextTick();
+      const controller = app.getControllerForElementAndIdentifier(root, "turbo-fx");
+      const target = document.getElementById("target");
+      const inserted = document.createElement("li");
+      target.appendChild(inserted);
+
+      controller.applyStreamEffect("append", target, [inserted]);
+
+      expect(inserted.classList.contains("turbo-fx--rgb-shift-appearing")).toBe(true);
+    });
+
+    it("overrides the ancestor effect with the nearest data-turbo-fx", async () => {
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" data-turbo-fx="glitch" id="root">
+          <turbo-frame id="a" data-turbo-fx="flash"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+
+      expect(frame.classList.contains("turbo-fx--flash")).toBe(true);
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
+    });
+
+    it("applies nothing and warns for an unknown effect name", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" data-turbo-fx="sparkle" id="root">
+          <turbo-frame id="a"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+
+      expect(frame.classList.length).toBe(0);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("sparkle"));
+      warn.mockRestore();
+    });
+
+    it("defaults to glitch when no data-turbo-fx attribute exists (existing behavior)", async () => {
+      const { app, root } = controllerFor(`
+        <div data-controller="turbo-fx" id="root">
+          <turbo-frame id="a"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("a");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
     });
   });
 });

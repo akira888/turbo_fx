@@ -1,5 +1,8 @@
 import { Controller } from "@hotwired/stimulus";
 
+// DOM 層（data-turbo-fx の値）はダッシュ区切り。Ruby ヘルパー側のバリデーションと二段構え。
+const KNOWN_EFFECTS = ["glitch", "blur", "rgb-shift", "flash"];
+
 // 親要素に 1 つ置かれ、配下の Turbo 更新イベントをバブリングで捕捉する。
 export default class extends Controller {
   static values = {
@@ -31,8 +34,9 @@ export default class extends Controller {
 
   handleFrameRender(event) {
     const target = event.target;
-    if (!this.shouldApply(target)) return;
-    this.applyEffect(target, "turbo-fx--glitch");
+    const effect = this.resolveEffect(target);
+    if (!effect) return;
+    this.applyEffect(target, `turbo-fx--${effect}`);
   }
 
   handleBeforeStreamRender(event) {
@@ -81,12 +85,14 @@ export default class extends Controller {
 
   applyStreamEffect(action, target, insertedEls) {
     if (action === "replace" || action === "update") {
-      if (!this.shouldApply(target)) return;
-      this.applyEffect(target, "turbo-fx--glitch");
+      const effect = this.resolveEffect(target);
+      if (!effect) return;
+      this.applyEffect(target, `turbo-fx--${effect}`);
     } else if (action === "append" || action === "prepend") {
       insertedEls.forEach((el) => {
-        if (!this.shouldApply(el)) return;
-        this.applyEffect(el, "turbo-fx--glitch-appearing");
+        const effect = this.resolveEffect(el);
+        if (!effect) return;
+        this.applyEffect(el, `turbo-fx--${effect}-appearing`);
       });
     }
     // remove など、それ以外の action は何もしない
@@ -125,12 +131,18 @@ export default class extends Controller {
     target.classList.add(className);
   }
 
-  // 対象自身から祖先方向に最も近い data-turbo-fx を探し、off なら適用しない
-  shouldApply(target) {
+  // 対象自身から祖先方向に最も近い data-turbo-fx を探し、適用すべきエフェクト名を返す。
+  // off / 未知の名前なら null（適用しない）。属性が無ければ glitch（従来挙動）。
+  resolveEffect(target) {
     const scoped = target.closest("[data-turbo-fx]");
-    if (scoped && scoped.getAttribute("data-turbo-fx") === "off") {
-      return false;
+    if (!scoped) return "glitch";
+
+    const effect = scoped.getAttribute("data-turbo-fx");
+    if (effect === "off") return null;
+    if (!KNOWN_EFFECTS.includes(effect)) {
+      console.warn(`turbo_fx: unknown effect "${effect}" — no effect applied`);
+      return null;
     }
-    return true;
+    return effect;
   }
 }
