@@ -34,6 +34,13 @@ export default class extends Controller {
 
   handleFrameRender(event) {
     const target = event.target;
+
+    // frame 自身が duration 上書き等のため自前のコントローラを持つ場合、
+    // バブリングで祖先のコントローラにも同じイベントが届く。
+    // target に最も近いコントローラだけが担当し、祖先側の二重適用
+    // （--turbo-fx-duration の既定値による上書き）を防ぐ。
+    if (target.closest('[data-controller~="turbo-fx"]') !== this.element) return;
+
     const effect = this.resolveEffect(target);
     if (!effect) return;
     this.applyEffect(target, `turbo-fx--${effect}`);

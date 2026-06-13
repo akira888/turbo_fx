@@ -324,6 +324,44 @@ describe("TurboFxController", () => {
     });
   });
 
+  describe("nested controllers (README: per-frame duration override)", () => {
+    // README の使い方例: 親に turbo_fx(:glitch)、frame に turbo_fx(:glitch, duration: 100)。
+    // frame 自身にも data-controller="turbo-fx" が付くため、frame-render を
+    // 子（ターゲットフェーズ）→ 親（バブリング）の順に両方が処理し、
+    // 後から走る親が --turbo-fx-duration を既定値で上書きしてしまうバグの再現テスト。
+    it("uses the frame's own duration value, not the ancestor's default", async () => {
+      const app = startStimulus(`
+        <div data-controller="turbo-fx" data-turbo-fx="glitch" id="root">
+          <turbo-frame id="b" data-controller="turbo-fx" data-turbo-fx="glitch"
+                       data-turbo-fx-duration-value="100"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("b");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(true);
+      expect(frame.style.getPropertyValue("--turbo-fx-duration")).toBe("100ms");
+    });
+
+    it("still cleans up via the frame controller's own animationend listener", async () => {
+      const app = startStimulus(`
+        <div data-controller="turbo-fx" data-turbo-fx="glitch" id="root">
+          <turbo-frame id="b" data-controller="turbo-fx" data-turbo-fx="glitch"
+                       data-turbo-fx-duration-value="100"></turbo-frame>
+        </div>
+      `);
+      await nextTick();
+
+      const frame = document.getElementById("b");
+      frame.dispatchEvent(new CustomEvent("turbo:frame-render", { bubbles: true }));
+      frame.dispatchEvent(new CustomEvent("animationend", { bubbles: true }));
+
+      expect(frame.classList.contains("turbo-fx--glitch")).toBe(false);
+    });
+  });
+
   describe("effect resolution", () => {
     function controllerFor(html) {
       document.body.innerHTML = html;
