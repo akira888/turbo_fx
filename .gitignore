@@ -5,3 +5,6 @@
 /coverage/
 /node_modules/
 *.gem
+
+# ブレインストーミング成果物・実装計画（ローカル参照用、コミットしない）
+/docs/superpowers/
