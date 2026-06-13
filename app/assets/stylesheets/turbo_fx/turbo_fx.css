@@ -67,31 +67,130 @@
   }
 }
 
+/* モーションブラー: 一瞬ぼけて戻る。上品で控えめ。 */
+@keyframes turbo-fx-blur {
+  0% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    filter: blur(10px);
+    opacity: 0.4;
+    transform: scale(1.04);
+  }
+  100% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 色収差パルス: RGB がふわっと分離して戻る。glitch から断裂と揺れを抜いた上品版。 */
+@keyframes turbo-fx-rgb-shift {
+  0% {
+    filter: none;
+    transform: scale(1);
+  }
+  30% {
+    filter: drop-shadow(5px 0 rgba(255, 0, 64, 0.8)) drop-shadow(-5px 0 rgba(0, 229, 255, 0.8)) blur(0.4px);
+    transform: scale(1.01);
+  }
+  60% {
+    filter: drop-shadow(2px 0 rgba(255, 0, 64, 0.5)) drop-shadow(-2px 0 rgba(0, 229, 255, 0.5));
+  }
+  100% {
+    filter: none;
+    transform: scale(1);
+  }
+}
+
+/* フラッシュ: 一瞬白く飛んで戻る。最小限で速い。 */
+@keyframes turbo-fx-flash {
+  0% {
+    filter: brightness(1);
+  }
+  12% {
+    filter: brightness(3) saturate(0.2);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
 /*
  * 置き換え系。
  * display を block に保証する: <turbo-frame> は既定で display:inline であり、
  * inline 要素に filter/clip-path を当てると中身がペイントされず消えてしまう。
  * （利用者が flex/grid 等を意図する場合は、より高い詳細度で上書き可能なよう !important は付けない。）
  */
-.turbo-fx--glitching {
+.turbo-fx--glitch {
   display: block;
   animation: turbo-fx-glitch var(--turbo-fx-duration) steps(5, end);
 }
 
 /*
- * 出現系: フェード + グリッチを重ねがけ。
- * フェードは opacity を 1 に保持したいので forwards、グリッチは終了状態が正常なので保持不要。
+ * 出現系: エフェクト + フェードを重ねがけ。
+ * appearing 系は fade-in をリストの後ろに置く（後勝ち）。
+ * turbo-fx-blur が opacity を持つため、前に置くとフェードが上書きされて効かない。
+ * glitch / rgb-shift / flash は opacity を触らないが、順序を全エフェクトで統一する。
  */
-.turbo-fx--appearing {
+.turbo-fx--glitch-appearing {
   display: block;
   animation:
-    turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards,
-    turbo-fx-glitch var(--turbo-fx-duration) steps(5, end);
+    turbo-fx-glitch var(--turbo-fx-duration) steps(5, end),
+    turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards;
+}
+
+.turbo-fx--blur {
+  display: block;
+  animation: turbo-fx-blur var(--turbo-fx-duration) ease-in-out;
+}
+
+/*
+ * appearing 系は fade-in をリストの後ろに置く（後勝ち）。
+ * turbo-fx-blur が opacity を持つため、前に置くとフェードが上書きされて効かない。
+ */
+.turbo-fx--blur-appearing {
+  display: block;
+  animation:
+    turbo-fx-blur var(--turbo-fx-duration) ease-in-out,
+    turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards;
+}
+
+.turbo-fx--rgb-shift {
+  display: block;
+  animation: turbo-fx-rgb-shift var(--turbo-fx-duration) ease-out;
+}
+
+.turbo-fx--rgb-shift-appearing {
+  display: block;
+  animation:
+    turbo-fx-rgb-shift var(--turbo-fx-duration) ease-out,
+    turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards;
+}
+
+.turbo-fx--flash {
+  display: block;
+  animation: turbo-fx-flash var(--turbo-fx-duration) ease-out;
+}
+
+.turbo-fx--flash-appearing {
+  display: block;
+  animation:
+    turbo-fx-flash var(--turbo-fx-duration) ease-out,
+    turbo-fx-fade-in var(--turbo-fx-duration) ease-out forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .turbo-fx--glitching,
-  .turbo-fx--appearing {
+  .turbo-fx--glitch,
+  .turbo-fx--glitch-appearing,
+  .turbo-fx--blur,
+  .turbo-fx--blur-appearing,
+  .turbo-fx--rgb-shift,
+  .turbo-fx--rgb-shift-appearing,
+  .turbo-fx--flash,
+  .turbo-fx--flash-appearing {
     animation: none;
   }
 }

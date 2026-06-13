@@ -1,6 +1,6 @@
 # turbo_fx
 
-Hotwire / Turbo のコンテンツ更新時に **デジタルグリッチエフェクト**（RGB ずれ＋スライス断裂）を差し込む Rails Engine gem です。
+Hotwire / Turbo のコンテンツ更新時に視覚エフェクトを差し込む Rails Engine gem です。**デジタルグリッチ**（RGB ずれ＋スライス断裂）のほか、**モーションブラー**・**色収差パルス**・**フラッシュ**を選べます。
 
 Turbo Frame の差し替えや Turbo Stream の `replace` / `update` / `append` / `prepend` を検知し、対象要素に CSS アニメーションを自動適用します。
 
@@ -42,6 +42,23 @@ application.register("turbo-fx", TurboFxController);
 
 ---
 
+## エフェクト一覧
+
+| 名前 | 見た目 |
+|------|--------|
+| `:glitch` | デジタルグリッチ。RGB ずれ＋スライス断裂。激しめ |
+| `:blur` | モーションブラー。一瞬ぼけて戻る。上品で控えめ |
+| `:rgb_shift` | 色収差パルス。RGB がふわっと分離して戻る |
+| `:flash` | フラッシュ。一瞬白く飛んで戻る。最小限で速い |
+
+このほか、特定の要素だけエフェクトを無効化する `:off` を指定できます（使い方参照）。未知のエフェクト名を渡すと `ArgumentError` になります（タイポをレンダリング時に検出できます）。
+
+Turbo Stream の `append` / `prepend` で要素が追加されるときは、どのエフェクトもフェードインと重ねがけされます。
+
+`:flash` は明滅が強いため、チャットのような高頻度の `append` 更新には控えめな `:blur` や `:rgb_shift` を推奨します。
+
+---
+
 ## 使い方
 
 **親子伝搬パターン** を採用しています。`data-controller="turbo-fx"` を持つ祖先要素がバブリングで配下の Turbo 更新イベントをまとめて捕捉します。
@@ -61,6 +78,11 @@ application.register("turbo-fx", TurboFxController);
 
   <%# :off でこの frame だけエフェクトを除外 %>
   <%= turbo_frame_tag :c, **turbo_fx(:off) do %>
+    ...
+  <% end %>
+
+  <%# エフェクトの種類自体を上書きすることもできる %>
+  <%= turbo_frame_tag :d, **turbo_fx(:blur) do %>
     ...
   <% end %>
 <% end %>
@@ -86,9 +108,9 @@ application.register("turbo-fx", TurboFxController);
 
 | 対象 | 演出 |
 |------|------|
-| Turbo Frame 更新 | 差し替え後にグリッチ |
-| Turbo Stream `replace` / `update` | 置き換わった要素にグリッチ |
-| Turbo Stream `append` / `prepend` | 追加された新要素にフェード＋グリッチ |
+| Turbo Frame 更新 | 差し替え後にエフェクト |
+| Turbo Stream `replace` / `update` | 置き換わった要素にエフェクト |
+| Turbo Stream `append` / `prepend` | 追加された新要素にフェード＋エフェクト |
 
 `remove` など上記以外の Turbo Stream アクションには何も適用しません。
 
